@@ -1,362 +1,269 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>校舎内 WebAR 学科紹介</title>
+const deptNames = {
+    'stamp-a': '電子機械科',
+    'stamp-b': '情報技術科',
+    'stamp-c': '情報処理科',
+    'stamp-d': '服飾デザイン科',
+    'stamp-e': '食物調理科',
+    'stamp-f': '流通経済科'
+};
 
-    <!-- A-Frame と MindAR の読み込み -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+let clickCount = 0;
+let clickTimer = null;
 
-    <style>
-        /* 画面全体の白抜け防止 */
-        html, body { 
-            margin: 0; 
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden; 
-            font-family: sans-serif; 
-            background-color: #000000 !important; 
+// 来場者向けの案内メッセージ＆「3D体験画面へ移動」ボタン表示制御
+function updateSoftLog(status, message, isSuccess = true) {
+    const statusEl = document.getElementById('log-status');
+    const msgEl = document.getElementById('log-message');
+    const btnEl = document.getElementById('btn-to-test');
+
+    if (statusEl && msgEl) {
+        statusEl.textContent = status;
+        if (isSuccess) {
+            statusEl.style.background = '#d1fae5';
+            statusEl.style.color = '#047857';
+            // 校章マーカー検出時に「3D体験画面へ移動」ボタンを表示
+            if (btnEl) btnEl.style.display = 'block';
+        } else {
+            statusEl.style.background = '#e2e8f0';
+            statusEl.style.color = '#475569';
+            // 見失っている時はボタンを隠す
+            if (btnEl) btnEl.style.display = 'none';
         }
+        msgEl.textContent = message;
+    }
+}
 
-        #ar-container, a-scene {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            height: 100dvh !important;
-            z-index: 1 !important;
-            overflow: hidden !important;
+function showNearObjectLog() {
+    return;
+}
+
+// 動画再生・停止制御
+function handlePlayVideo(markerElem, path) {
+    const videos = document.querySelectorAll('video');
+    videos.forEach(v => {
+        const src = v.getAttribute('src');
+        if (src && src.includes(path)) {
+            v.muted = true;
+            v.play().then(() => {
+                const aVideo = markerElem.querySelector('a-video');
+                if (aVideo) {
+                    const mesh = aVideo.getObject3D('mesh');
+                    if (mesh && mesh.material && mesh.material.map) {
+                        mesh.material.map.needsUpdate = true;
+                    }
+                }
+            }).catch(e => console.log("再生エラー:", e));
         }
+    });
+}
 
-        .a-canvas {
-            width: 100% !important;
-            height: 100% !important;
-            top: 0 !important;
-            left: 0 !important;
-            position: absolute !important;
+function handlePauseVideo(path) {
+    const videos = document.querySelectorAll('video');
+    videos.forEach(v => {
+        const src = v.getAttribute('src');
+        if (src && src.includes(path)) {
+            v.pause();
         }
+    });
+}
 
-        body > video, 
-        a-scene video {
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            min-width: 100% !important;
-            min-height: 100% !important;
-            width: auto !important;
-            height: auto !important;
-            object-fit: cover !important;
-        }
-        
-        /* 戻るボタン */
-        .btn-back {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 10000;
-            background-color: rgba(0, 0, 0, 0.6);
-            color: #ffffff;
-            padding: 10px 18px;
-            border-radius: 20px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 16px;
-            border: 2px solid #ffffff;
-        }
+function stopWebcamStream() {
+    try {
+        const videoElems = document.querySelectorAll('video');
+        videoElems.forEach(video => {
+            if (video.srcObject) {
+                const stream = video.srcObject;
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        });
+    } catch (e) {
+        console.warn("カメラ停止処理エラー:", e);
+    }
+}
 
-        /* 階層切り替えUI */
-        .floor-selector {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            gap: 6px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 6px;
-            border-radius: 20px;
-            border: 2px solid #ffffff;
-        }
+// AR.js パターンマーカーイベントのバインド
+function bindMarkerEvents() {
+    // ar-marker-1 (校章マーカー pattern.koshou.patt)
+    const m1 = document.getElementById('ar-marker-1');
+    if (m1) {
+        m1.addEventListener('markerFound', function() {
+            console.log("検出成功: 校章マーカー (ar-marker-1)");
+            
+            // ログ更新と「3D体験画面へ移動」ボタンの表示
+            updateSoftLog('検出成功！', '🎉 校章マーカーを読み取りました！下のボタンから体験画面へ進んでね', true);
+            handlePlayVideo(this, 'jgvideo2.mp4');
+        });
 
-        .floor-btn {
-            background: transparent;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .floor-btn.active {
-            background: #10b981;
-            color: white;
-        }
-
-        .mindar-ui-overlay, .mindar-ui-scanning {
-            display: none !important;
-        }
-
-        /* ログメッセージオーバーレイ（枠線部分は非表示） */
-        .scan-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            z-index: 10000;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .scan-overlay.active { opacity: 1; }
-
-        .scan-message {
-            position: absolute;
-            top: 15%; /* 画面上部にログを表示 */
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(16, 185, 129, 0.95);
-            color: #ffffff;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 16px;
-            white-space: nowrap;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            border: 2px solid #ffffff;
-        }
-
-        /* スタンプポップアップ */
-        .stamp-dialog-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 20000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .stamp-dialog-box {
-            background: #ffffff;
-            width: 85%; max-width: 340px;
-            border-radius: 20px;
-            padding: 24px 20px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.27);
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        a-assets video {
-            display: none !important;
-        }
-    </style>
-</head>
-<body>
-
-    <a href="videoMaya.html" class="btn-back">← 戻る</a>
-
-    <!-- フロア選択ボタン-->
-    <div class="floor-selector">
-        <button id="btn-1f" class="floor-btn" onclick="switchFloor('1f')">1F</button>
-        <button id="btn-2f" class="floor-btn" onclick="switchFloor('2f')">2F</button>
-        <button id="btn-3f" class="floor-btn" onclick="switchFloor('3f')">3F</button>
-        <button id="btn-4f" class="floor-btn" onclick="switchFloor('4f')">4F</button>
-        <button id="btn-5f" class="floor-btn" onclick="switchFloor('5f')">5F</button>
-    </div>
-
-    <!-- 検出ログ表示用UI -->
-    <div id="scan-overlay" class="scan-overlay">
-        <div id="scan-text" class="scan-message">🔍 ターゲット検出中...</div>
-    </div>
-
-    <div id="ar-container"></div>
-
-    <div id="stamp-dialog" class="stamp-dialog-overlay">
-        <div class="stamp-dialog-box">
-            <h3 style="margin-top: 0; color: #059669; font-size: 20px;">🎉 スタンプ獲得！</h3>
-            <p id="stamp-msg" style="font-size: 14px; color: #444; line-height: 1.6; margin-bottom: 20px;">
-                オブジェクトを検出して<br>キャラクターが出現しました！
-            </p>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="closeStampDialog()" style="flex: 1; padding: 10px; border: none; background: #94a3b8; color: white; border-radius: 10px; font-weight: bold; cursor: pointer;">閉じる</button>
-                <button onclick="goToMap()" style="flex: 1; padding: 10px; border: none; background: #f59e0b; color: white; border-radius: 10px; font-weight: bold; cursor: pointer;">マップへGO!</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    const floorData = {
-    // --- 3Dモデル表示（1F〜5F） ---
-        '1f': { mind: '1f', model: 'kougyo2.glb', video: '', floorText: '1F', modelScale: '0.2 0.2 0.2', modelPos: '0 0.45 0.1' },
-        '2f': { mind: '2f', model: 'syokutyou.glb', video: '', floorText: '2F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.7 0.15' },
-        '3f': { mind: '3f', model: 'fukude3.glb', video: '', floorText: '3F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.55 0.15' },
-        '4f': { mind: '4f', model: 'zyougi2.glb', video: '', floorText: '4F', modelScale: '0.2 0.2 0.2', modelPos: '0 0.55 0.1' },
-        '5f': { mind: '5f', model: 'syougyou3.glb', video: '', floorText: '5F', modelScale: '0.5 0.5 0.5', modelPos: '0 0.5 0.1' },
-
-    // --- 学科動画AR（認識用.mind ＆ 解放フラグ） ---
-        'denki':     { mind: 'tokei',     model: '', video: 'denki.mp4',     floorText: '電子機械', flag: 'stamp-a-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'jougi':     { mind: 'pc',        model: '', video: 'jgvideo2.mp4',  floorText: '情報技術', flag: 'stamp-b-flag', videoWidth: '1.0', videoHeight: '0.56' },
-    // 'syori':      { mind: 'syori',     model: '', video: 'joho_syori.mp4',floorText: '情報処理', flag: 'stamp-c-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'hukude':    { mind: 'hukude',    model: '', video: 'hukude.mp4',    floorText: '服飾デザイン', flag: 'stamp-d-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'syokutyou': { mind: 'syokutyou', model: '', video: 'syokutyou.mp4', floorText: '食物調理', flag: 'stamp-e-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'ryukei':    { mind: 'ryukei',    model: '', video: 'syougyou.mp4',  floorText: '流通経済', flag: 'stamp-f-flag', videoWidth: '1.0', videoHeight: '0.56' }
-    };
-
-    // URLのパラメータから階数を取得する
-    // URLのパラメータから階数/学科を取得する
-const urlParams = new URLSearchParams(window.location.search);
-let selectedFloor = (urlParams.get('floor') || '1f').toLowerCase();
-if (!floorData[selectedFloor]) selectedFloor = '1f';
-
-let currentConfig = floorData[selectedFloor];
+        m1.addEventListener('markerLost', function() {
+            console.log("マーカー喪失: ar-marker-1");
+            updateSoftLog('スキャン中', '近くに読み取れるものがあるかも！ボタンを押してみよう', false);
+            handlePauseVideo('jgvideo2.mp4');
+        });
+    }
+}
 
 window.addEventListener('DOMContentLoaded', () => {
-    updateActiveButton(selectedFloor);
-    buildARScene();
+    const unlockAudio = () => {
+        const videos = document.querySelectorAll('video');
+        videos.forEach(v => {
+            if (!v.paused) v.muted = false;
+        });
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+
+    bindMarkerEvents();
 });
 
-function updateActiveButton(floorPrefix) {
-    document.querySelectorAll('.floor-btn').forEach(btn => btn.classList.remove('active'));
-    const activeBtn = document.getElementById(`btn-${floorPrefix}`);
-    if (activeBtn) activeBtn.classList.add('active');
+window.addEventListener('beforeunload', () => {
+    stopWebcamStream();
+});
+
+function goBack() {
+    stopWebcamStream();
+    window.location.href = 'index.html';
 }
 
-function buildARScene() {
-    const mindFile = currentConfig.mind; 
+function switchToMarkerless() {
+    stopWebcamStream();
+    window.location.href = 'test.html';
+}
+
+// 「Next ➔」を押してAR.jsシーン生成（pattern.koshou.patt を使用）
+function startAR() {
+    const screen = document.getElementById('explanation-screen');
+    if (screen) {
+        screen.remove();
+    }
+
     const container = document.getElementById('ar-container');
-    const hasVideo = Boolean(currentConfig.video);
-    const hasModel = Boolean(currentConfig.model);
+    if (container && !document.getElementById('ar-scene')) {
+        container.innerHTML = `
+            <a-scene 
+                id="ar-scene"
+                embedded 
+                arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7; trackingMethod: best;" 
+                vr-mode-ui="enabled: false">
+            
+                <a-entity light="type: ambient; color: #ffffff; intensity: 1.8;"></a-entity>
+
+                <!-- 校章マーカー pattern.koshou.patt を読み込み -->
+                <a-marker type="pattern" url="./pattern.koshou.patt" patternRatio="0.7" id="ar-marker-1"></a-marker>
+
+                <a-entity camera></a-entity>
+            </a-scene>
+        `;
+
+        setTimeout(() => {
+            bindMarkerEvents();
+        }, 300);
+    }
+}
+
+// 解放動画一覧モーダル制御（1学科1動画表示）
+function openCollection() {
+    const modal = document.getElementById('collection-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeCollection() {
+    const modal = document.getElementById('collection-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function selectDepartment(deptKey) {
+    openDeptVideos(deptKey);
+}
+
+function openDeptVideos(deptKey) {
+    const modal = document.getElementById('dept-video-modal');
+    const title = document.getElementById('dept-title');
+    const list = document.getElementById('dept-video-list');
     
-    container.innerHTML = `
-    <a-scene
-        id="ar-scene"
-        mindar-image="imageTargetSrc: ./${mindFile}.mind; autoStart: true; uiLoading: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001;"
-        color-space="sRGB"
-        renderer="colorManagement: true, physicallyCorrectLights: true"
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false">
+    if (title) title.textContent = `${deptNames[deptKey] || '学科'} の動画`;
+    
+    if (list) {
+        list.innerHTML = '';
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        const deptVideoData = {
+            'stamp-a': { id: 'stamp-a-flag', title: '電子機械科 紹介動画', src: 'denki.mp4' },
+            'stamp-b': { id: 'stamp-b-flag', title: '情報技術科 紹介動画', src: 'jgvideo2.mp4' },
+            'stamp-c': { id: 'stamp-c-flag', title: '情報処理科 紹介動画', src: 'joho_syori.mp4' },
+            'stamp-d': { id: 'stamp-d-flag', title: '服飾デザイン科 紹介動画', src: 'hukude.mp4' },
+            'stamp-e': { id: 'stamp-e-flag', title: '食物調理科 紹介動画', src: 'syokutyou.mp4' },
+            'stamp-f': { id: 'stamp-f-flag', title: '流通経済科 紹介動画', src: 'syougyou.mp4' }
+        };
 
-        <a-entity light="type: ambient; color: #ffffff; intensity: 2.5;"></a-entity>
-        <a-entity light="type: directional; color: #ffffff; intensity: 1.2;" position="1 2 1"></a-entity>
+        const videoInfo = deptVideoData[deptKey];
 
-        <a-entity mindar-image-target="targetIndex: 0" id="target-object">
-            ${hasVideo ? `
-            <a-video
-                id="floor-video-entity"
-                src="${currentConfig.video}"
-                position="0 0 0"
-                rotation="0 0 0"
-                width="${currentConfig.videoWidth || '1.0'}"
-                height="${currentConfig.videoHeight || '0.56'}"
-                material="shader: flat; side: double;"
-                muted
-                playsinline
-                webkit-playsinline>
-            </a-video>` : ''}
+        if (videoInfo) {
+            let isUnlocked = false;
 
-            ${hasModel ? `
-            <a-gltf-model
-                src="${currentConfig.model}"
-                position="${currentConfig.modelPos || '0 0 0'}"
-                scale="${currentConfig.modelScale || '1 1 1'}"
-                rotation="0 0 0">
-            </a-gltf-model>` : ''}
-        </a-entity>
-    </a-scene>
-    `;
-
-    setTimeout(() => {
-        setupTargetEvents();
-    }, 300);
-}
-
-function switchFloor(floorPrefix) {
-    if (floorPrefix === selectedFloor) return;
-    window.location.href = `?floor=${floorPrefix}`;
-}
-
-let stampTimer = null;
-
-function setupTargetEvents() {
-    const targetObject = document.getElementById('target-object');
-    const stampDialog = document.getElementById('stamp-dialog');
-    const stampMsg = document.getElementById('stamp-msg');
-    const videoEntity = document.getElementById('floor-video-entity');
-
-    if (videoEntity) {
-        videoEntity.addEventListener('loaded', () => {
-            const videoEl = videoEntity.components.material?.material?.map?.image;
-            if (videoEl && typeof videoEl.pause === 'function') {
-                videoEl.pause();
-                videoEl.currentTime = 0;
+            try {
+                isUnlocked = (localStorage.getItem(videoInfo.id) === '1');
+            } catch (e) {
+                isUnlocked = false;
             }
-        });
+
+            const div = document.createElement('div');
+            div.className = `video-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+
+            if (isUnlocked) {
+                div.innerHTML = `
+                    <p style="font-weight:bold; margin:0 0 8px 0; color:#059669;">🔓 ${videoInfo.title}</p>
+                    <video src="${videoInfo.src}" controls style="width:100%; border-radius:8px; display:block;"></video>
+                `;
+            } else {
+                div.innerHTML = `
+                    <p style="font-weight:bold; margin:0; color:#475569;">🔒 ${videoInfo.title}</p>
+                    <div class="secret-box" style="background:#cbd5e1; border-radius:10px; padding:20px; text-align:center; margin-top:8px;">
+                        <div class="secret-icon" style="font-size:36px; font-weight:bold; color:#64748b; margin-bottom:4px;">❓</div>
+                        <small style="color:#64748b; font-weight:bold;">ARマーカーを探して解放しよう！</small>
+                    </div>
+                `;
+            }
+            list.appendChild(div);
+        }
     }
+    
+    const collectionModal = document.getElementById('collection-modal');
+    if (collectionModal) collectionModal.style.display = 'none';
+    if (modal) modal.style.display = 'flex';
+}
 
-    if (targetObject) {
-        targetObject.addEventListener('targetFound', () => {
-            if (stampTimer) clearTimeout(stampTimer);
-
-            if (videoEntity && videoEntity.components?.material?.material?.map) {
-                const videoEl = videoEntity.components.material.material.map.image;
-                if (videoEl && typeof videoEl.play === 'function') {
-                    videoEl.play().catch(e => console.log("Video play error:", e));
-                }
-            }
-
-            // 学科用の個別フラグ保存
-            if (currentConfig.flag) {
-                localStorage.setItem(currentConfig.flag, '1');
-            }
-            // 従来のスタンプ保存
-            localStorage.setItem(`stamp-${currentConfig.floorText}-done`, '1');
-
-            stampTimer = setTimeout(() => {
-                stampMsg.innerHTML = `${currentConfig.floorText} のオブジェクトを検出して<br>ARコンテンツが解放されました！<br>一覧で確認しますか？`;
-                stampDialog.style.display = 'flex';
-            }, 10000);
-        });
-
-        targetObject.addEventListener('targetLost', () => {
-            if (stampTimer) {
-                clearTimeout(stampTimer);
-                stampTimer = null;
-            }
-
-            if (videoEntity && videoEntity.components?.material?.material?.map) {
-                const videoEl = videoEntity.components.material.material.map.image;
-                if (videoEl && typeof videoEl.pause === 'function') {
-                    videoEl.pause();
-                }
-            }
-        });
+function closeDeptVideos() {
+    const deptModal = document.getElementById('dept-video-modal');
+    const collectionModal = document.getElementById('collection-modal');
+    
+    if (deptModal) {
+        const videos = deptModal.querySelectorAll('video');
+        videos.forEach(v => v.pause());
+        deptModal.style.display = 'none';
+    }
+    
+    if (collectionModal) {
+        collectionModal.style.display = 'flex';
     }
 }
 
-function closeStampDialog() {
-    document.getElementById('stamp-dialog').style.display = 'none';
-}
+function handleTitleClick() {
+    clickCount++;
+    clearTimeout(clickTimer);
 
-function goToMap() {
-    window.location.href = 'map.html';
+    if (clickCount >= 5) {
+        clickCount = 0;
+        if (confirm('【開発者コマンド】スタンプと解放状況を全リセットしますか？')) {
+            try { localStorage.clear(); } catch(e){}
+            alert('すべての進行状況をリセットしました！');
+            location.reload();
+        }
+    } else {
+        clickTimer = setTimeout(() => {
+            clickCount = 0;
+        }, 1500);
+    }
 }
-</script>
-</body>
-</html>
