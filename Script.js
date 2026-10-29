@@ -10,7 +10,7 @@ const deptNames = {
 let clickCount = 0;
 let clickTimer = null;
 
-// 来場者向けの案内メッセージ＆ボタン表示制御
+// 来場者向けの案内メッセージ＆「3D体験画面へ移動」ボタン表示制御
 function updateSoftLog(status, message, isSuccess = true) {
     const statusEl = document.getElementById('log-status');
     const msgEl = document.getElementById('log-message');
@@ -21,12 +21,12 @@ function updateSoftLog(status, message, isSuccess = true) {
         if (isSuccess) {
             statusEl.style.background = '#d1fae5';
             statusEl.style.color = '#047857';
-            // マーカー検出時のみ 3D体験画面への移動ボタンを表示
+            // 校章マーカー検出時に「3D体験画面へ移動」ボタンを表示
             if (btnEl) btnEl.style.display = 'block';
         } else {
             statusEl.style.background = '#e2e8f0';
             statusEl.style.color = '#475569';
-            // マーカーを見失っている時はボタンを隠す
+            // 見失っている時はボタンを隠す
             if (btnEl) btnEl.style.display = 'none';
         }
         msgEl.textContent = message;
@@ -35,36 +35,6 @@ function updateSoftLog(status, message, isSuccess = true) {
 
 function showNearObjectLog() {
     return;
-}
-
-// 動画再生・停止処理
-function handlePlayVideo(markerElem, path) {
-    const videos = document.querySelectorAll('video');
-    videos.forEach(v => {
-        const src = v.getAttribute('src');
-        if (src && src.includes(path)) {
-            v.muted = true;
-            v.play().then(() => {
-                const aVideo = markerElem.querySelector('a-video');
-                if (aVideo) {
-                    const mesh = aVideo.getObject3D('mesh');
-                    if (mesh && mesh.material && mesh.material.map) {
-                        mesh.material.map.needsUpdate = true;
-                    }
-                }
-            }).catch(e => console.log("再生エラー:", e));
-        }
-    });
-}
-
-function handlePauseVideo(path) {
-    const videos = document.querySelectorAll('video');
-    videos.forEach(v => {
-        const src = v.getAttribute('src');
-        if (src && src.includes(path)) {
-            v.pause();
-        }
-    });
 }
 
 function stopWebcamStream() {
@@ -83,36 +53,25 @@ function stopWebcamStream() {
     }
 }
 
-// AR.jsのパターンマーカー検出イベント
+// AR.js パターンマーカー（校章）のイベント監視
 function bindMarkerEvents() {
     const m1 = document.getElementById('ar-marker-1');
     if (m1) {
         m1.addEventListener('markerFound', function() {
-            console.log("検出成功: 校章マーカー");
+            console.log("検出成功: 校章マーカー (ar-marker-1)");
+            
+            // 動画再生は行わず、ログ更新と移動ボタンの表示のみ実施
             updateSoftLog('検出成功！', '🎉 校章マーカーを読み取りました！下のボタンから体験画面へ進んでね', true);
-            handlePlayVideo(this, 'jgvideo2.mp4');
         });
 
         m1.addEventListener('markerLost', function() {
-            console.log("マーカー喪失: 校章マーカー");
+            console.log("マーカー喪失: ar-marker-1");
             updateSoftLog('スキャン中', '近くに読み取れるものがあるかも！ボタンを押してみよう', false);
-            handlePauseVideo('jgvideo2.mp4');
         });
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    const unlockAudio = () => {
-        const videos = document.querySelectorAll('video');
-        videos.forEach(v => {
-            if (!v.paused) v.muted = false;
-        });
-        window.removeEventListener('click', unlockAudio);
-        window.removeEventListener('touchstart', unlockAudio);
-    };
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
-
     bindMarkerEvents();
 });
 
@@ -130,7 +89,7 @@ function switchToMarkerless() {
     window.location.href = 'test.html';
 }
 
-// 「Next ➔」ボタンを押した時に AR.js のシーンを生成する
+// 「Next ➔」を押してAR.jsシーン生成（pattern.koshou.patt）
 function startAR() {
     const screen = document.getElementById('explanation-screen');
     if (screen) {
@@ -139,7 +98,6 @@ function startAR() {
 
     const container = document.getElementById('ar-container');
     if (container && !document.getElementById('ar-scene')) {
-        // ※ 実際の校章マーカーファイル名が pattern-koshou.patt の場合は指定を合わせてください
         container.innerHTML = `
             <a-scene 
                 id="ar-scene"
@@ -149,9 +107,8 @@ function startAR() {
             
                 <a-entity light="type: ambient; color: #ffffff; intensity: 1.8;"></a-entity>
 
-                <a-marker type="pattern" url="./pattern-koshou.patt" patternRatio="0.7" id="ar-marker-1">
-                    <a-video src="jgvideo2.mp4" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0"></a-video>
-                </a-marker>
+                <!-- 校章マーカーのみを配置（動画タグは含めない） -->
+                <a-marker type="pattern" url="./pattern.koshou.patt" patternRatio="0.7" id="ar-marker-1"></a-marker>
 
                 <a-entity camera></a-entity>
             </a-scene>
@@ -163,7 +120,7 @@ function startAR() {
     }
 }
 
-// 解放動画の閲覧モーダル関連
+// 解放動画一覧モーダル制御（1学科1動画表示）
 function openCollection() {
     const modal = document.getElementById('collection-modal');
     if (modal) modal.style.display = 'flex';
