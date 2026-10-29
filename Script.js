@@ -21,10 +21,12 @@ function updateSoftLog(status, message, isSuccess = true) {
         if (isSuccess) {
             statusEl.style.background = '#d1fae5';
             statusEl.style.color = '#047857';
+            // マーカー検出時のみ 3D体験画面への移動ボタンを表示
             if (btnEl) btnEl.style.display = 'block';
         } else {
             statusEl.style.background = '#e2e8f0';
             statusEl.style.color = '#475569';
+            // マーカーを見失っている時はボタンを隠す
             if (btnEl) btnEl.style.display = 'none';
         }
         msgEl.textContent = message;
@@ -35,15 +37,15 @@ function showNearObjectLog() {
     return;
 }
 
-// 動画の自動再生
-function handlePlayVideo(targetElem, path) {
+// 動画再生・停止処理
+function handlePlayVideo(markerElem, path) {
     const videos = document.querySelectorAll('video');
     videos.forEach(v => {
         const src = v.getAttribute('src');
         if (src && src.includes(path)) {
             v.muted = true;
             v.play().then(() => {
-                const aVideo = targetElem.querySelector('a-video');
+                const aVideo = markerElem.querySelector('a-video');
                 if (aVideo) {
                     const mesh = aVideo.getObject3D('mesh');
                     if (mesh && mesh.material && mesh.material.map) {
@@ -81,39 +83,22 @@ function stopWebcamStream() {
     }
 }
 
-// 学科ごとに個別に解放処理を行うイベントバインド
-function bindMindEvents() {
-    // 学科ごとのターゲット設定リスト（targetIndex は targets.mind 内の画像順）
-    const targets = [
-        { id: 'target-a', flag: 'stamp-a-flag', name: '電子機械科', video: 'denshi.mp4' },
-        { id: 'target-b', flag: 'stamp-b-flag', name: '情報技術科', video: 'joho_gijutsu.mp4' },
-        { id: 'target-c', flag: 'stamp-c-flag', name: '情報処理科', video: 'joho_syori.mp4' },
-        { id: 'target-d', flag: 'stamp-d-flag', name: '服飾デザイン科', video: 'hukudelong.mp4' },
-        { id: 'target-e', flag: 'stamp-e-flag', name: '食物調理科', video: 'chouri.mp4' },
-        { id: 'target-f', flag: 'stamp-f-flag', name: '流通経済科', video: 'ryutsu.mp4' }
-    ];
+// AR.jsのパターンマーカー検出イベント
+function bindMarkerEvents() {
+    const m1 = document.getElementById('ar-marker-1');
+    if (m1) {
+        m1.addEventListener('markerFound', function() {
+            console.log("検出成功: 校章マーカー");
+            updateSoftLog('検出成功！', '🎉 校章マーカーを読み取りました！下のボタンから体験画面へ進んでね', true);
+            handlePlayVideo(this, 'jgvideo2.mp4');
+        });
 
-    targets.forEach(item => {
-        const elem = document.getElementById(item.id);
-        if (elem) {
-            // 検出したターゲットの学科だけを個別に解放
-            elem.addEventListener('targetFound', function() {
-                console.log(`検出成功: ${item.name}`);
-                try { 
-                    localStorage.setItem(item.flag, '1'); // 読み取った学科のみ1にする
-                } catch(e){}
-
-                updateSoftLog('検出成功！', `🎉 ${item.name} の動画が解放されました！`, true);
-                handlePlayVideo(this, item.video);
-            });
-
-            elem.addEventListener('targetLost', function() {
-                console.log(`ターゲット喪失: ${item.name}`);
-                updateSoftLog('スキャン中', '近くに読み取れるものがあるかも！ボタンを押してみよう', false);
-                handlePauseVideo(item.video);
-            });
-        }
-    });
+        m1.addEventListener('markerLost', function() {
+            console.log("マーカー喪失: 校章マーカー");
+            updateSoftLog('スキャン中', '近くに読み取れるものがあるかも！ボタンを押してみよう', false);
+            handlePauseVideo('jgvideo2.mp4');
+        });
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -128,7 +113,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
 
-    bindMindEvents();
+    bindMarkerEvents();
 });
 
 window.addEventListener('beforeunload', () => {
@@ -145,7 +130,7 @@ function switchToMarkerless() {
     window.location.href = 'test.html';
 }
 
-// 説明画面の「Next ➔」を押してMindARシーン生成（学科ごとのターゲット生成）
+// 「Next ➔」ボタンを押した時に AR.js のシーンを生成する
 function startAR() {
     const screen = document.getElementById('explanation-screen');
     if (screen) {
@@ -154,33 +139,31 @@ function startAR() {
 
     const container = document.getElementById('ar-container');
     if (container && !document.getElementById('ar-scene')) {
+        // ※ 実際の校章マーカーファイル名が pattern-koshou.patt の場合は指定を合わせてください
         container.innerHTML = `
             <a-scene 
                 id="ar-scene"
-                mindar-image="imageTargetSrc: ./targets.mind;" 
-                color-space="sRGB" 
-                renderer="colorManagement: true, physicallyCorrectLights" 
-                vr-mode-ui="enabled: false" 
-                device-orientation-permission-ui="enabled: false">
+                embedded 
+                arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7; trackingMethod: best;" 
+                vr-mode-ui="enabled: false">
             
-                <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                <a-entity light="type: ambient; color: #ffffff; intensity: 1.8;"></a-entity>
 
-                <!-- targets.mind 内の画像インデックス（0〜5）と学科を1対1で対応付け -->
-                <a-entity id="target-a" mindar-image-target="targetIndex: 0"></a-entity>
-                <a-entity id="target-b" mindar-image-target="targetIndex: 1"></a-entity>
-                <a-entity id="target-c" mindar-image-target="targetIndex: 2"></a-entity>
-                <a-entity id="target-d" mindar-image-target="targetIndex: 3"></a-entity>
-                <a-entity id="target-e" mindar-image-target="targetIndex: 4"></a-entity>
-                <a-entity id="target-f" mindar-image-target="targetIndex: 5"></a-entity>
+                <a-marker type="pattern" url="./pattern-koshou.patt" patternRatio="0.7" id="ar-marker-1">
+                    <a-video src="jgvideo2.mp4" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0"></a-video>
+                </a-marker>
+
+                <a-entity camera></a-entity>
             </a-scene>
         `;
 
         setTimeout(() => {
-            bindMindEvents();
+            bindMarkerEvents();
         }, 300);
     }
 }
 
+// 解放動画の閲覧モーダル関連
 function openCollection() {
     const modal = document.getElementById('collection-modal');
     if (modal) modal.style.display = 'flex';
@@ -206,12 +189,12 @@ function openDeptVideos(deptKey) {
         list.innerHTML = '';
 
         const deptVideoData = {
-            'stamp-a': { id: 'stamp-a-flag', title: '電子機械科 紹介動画', src: 'denshi.mp4' },
-            'stamp-b': { id: 'stamp-b-flag', title: '情報技術科 紹介動画', src: 'joho_gijutsu.mp4' },
+            'stamp-a': { id: 'stamp-a-flag', title: '電子機械科 紹介動画', src: 'denki.mp4' },
+            'stamp-b': { id: 'stamp-b-flag', title: '情報技術科 紹介動画', src: 'jgvideo2.mp4' },
             'stamp-c': { id: 'stamp-c-flag', title: '情報処理科 紹介動画', src: 'joho_syori.mp4' },
-            'stamp-d': { id: 'stamp-d-flag', title: '服飾デザイン科 紹介動画', src: 'hukudelong.mp4' },
-            'stamp-e': { id: 'stamp-e-flag', title: '食物調理科 紹介動画', src: 'chouri.mp4' },
-            'stamp-f': { id: 'stamp-f-flag', title: '流通経済科 紹介動画', src: 'ryutsu.mp4' }
+            'stamp-d': { id: 'stamp-d-flag', title: '服飾デザイン科 紹介動画', src: 'hukude.mp4' },
+            'stamp-e': { id: 'stamp-e-flag', title: '食物調理科 紹介動画', src: 'syokutyou.mp4' },
+            'stamp-f': { id: 'stamp-f-flag', title: '流通経済科 紹介動画', src: 'syougyou.mp4' }
         };
 
         const videoInfo = deptVideoData[deptKey];
