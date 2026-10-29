@@ -89,7 +89,6 @@ function switchToMarkerless() {
     window.location.href = 'test.html';
 }
 
-// 「Next ➔」を押してAR.jsシーン生成（pattern.koshou.patt）
 function startAR() {
     const screen = document.getElementById('explanation-screen');
     if (screen) {
@@ -107,8 +106,8 @@ function startAR() {
             
                 <a-entity light="type: ambient; color: #ffffff; intensity: 1.8;"></a-entity>
 
-                <!-- 校章マーカーのみを配置（動画タグは含めない） -->
-                <a-marker type="pattern" url="./pattern.koshou.patt" patternRatio="0.7" id="ar-marker-1"></a-marker>
+                <!-- ファイル名を pattern-koshou.patt (ハイフン) に変更 -->
+                <a-marker type="pattern" url="./pattern-koshou.patt" patternRatio="0.7" id="ar-marker-1"></a-marker>
 
                 <a-entity camera></a-entity>
             </a-scene>
