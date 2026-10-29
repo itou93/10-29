@@ -86,7 +86,7 @@ function goBack() {
 
 function switchToMarkerless() {
     stopWebcamStream();
-    window.location.href = 'test.html';
+    window.location.href = './test.html';
 }
 
 function startAR() {
@@ -106,7 +106,6 @@ function startAR() {
             
                 <a-entity light="type: ambient; color: #ffffff; intensity: 1.8;"></a-entity>
 
-                <!-- ファイル名を pattern-koshou.patt (ハイフン) に変更 -->
                 <a-marker type="pattern" url="./pattern-koshou.patt" patternRatio="0.7" id="ar-marker-1"></a-marker>
 
                 <a-entity camera></a-entity>
@@ -159,7 +158,7 @@ function openDeptVideos(deptKey) {
             let isUnlocked = false;
 
             try {
-                isUnlocked = (localStorage.getItem(videoInfo.id) === '1');
+                isUnlocked = (localStorage.setItem ? localStorage.getItem(videoInfo.id) === '1' : false);
             } catch (e) {
                 isUnlocked = false;
             }
