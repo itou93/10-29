@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡単説明アプリ</title>
+    <style>
+        /* スマホで見やすくするための簡単なデザイン */
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 50px 20px;
+            background-color: #f0f4f8;
+        }
+        h1 {
+            color: #333;
+        }
+        
+        /* 共通のボタン基本スタイル */
+        .btn, .btn-ar {
+            display: inline-block;
+            padding: 15px 30px;
+            font-size: 18px;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+            text-decoration: none; /* リンクの下線を消す */
+            margin: 10px;          /* ボタン同士の隙間をあける */
+        }
+
+        /* 青いボタン（説明を出す用） */
+        .btn {
+            background-color: #007bff;
+        }
+        .btn:active {
+            background-color: #0056b3; /* タッチしたときに色が変わる */
+        }
+
+        /* 緑のボタン（ARカメラへ行く用） */
+        .btn-ar {
+            background-color: #28a745;
+        }
+        .btn-ar:active {
+            background-color: #1e7e34; /* タッチしたときに色が変わる */
+        }
+
+        #description {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: none; /* 最初は隠しておく */
+            font-size: 16px;
+            line-height: 1.6;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ようこそ！</h1>
+    <p>下のボタンをタッチしてみてね。</p>
+
+    <button class="btn" onclick="showDescription()">ここをタッチ</button>
+
+    <a href="index/index.html" class="btn-ar">ARモードを起動する</a>
+
+    <div id="description">
+        ここに説明文が入ります！<br>
+        「QRコードからWEBページを開き、ボタンを押して説明を出す」という仕組みがバッチリ成功しましたね！
+    </div>
+
+    <script>
+        // ボタンを押したときの動き
+        function showDescription() {
+            var desc = document.getElementById("description");
+            // 隠れている説明を表示する
+            desc.style.display = "block";
+        }
+    </script>
+
+</body>
+</html>
