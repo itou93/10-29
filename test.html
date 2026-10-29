@@ -75,17 +75,19 @@
     </div>
 
     <script>
-    const floorData = {
-        '1f': { mind: '1f', model: 'kougyo2.glb', video: '', floorText: '1F', modelScale: '0.2 0.2 0.2', modelPos: '0 0.45 0.1' },
-        '2f': { mind: '2f', model: 'syokutyou.glb', video: '', floorText: '2F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.7 0.15' },
-        '3f': { mind: '3f', model: 'fukude3.glb', video: '', floorText: '3F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.55 0.15' },
-        '4f': { mind: '4f', model: 'zyougi.glb', video: '', floorText: '4F', modelScale: '0.2 0.2 0.2', modelPos: '0 0.55 0.1' },
-        '5f': { mind: '5f', model: 'syougyou3.glb', video: '', floorText: '5F', modelScale: '0.5 0.5 0.5', modelPos: '0 0.5 0.1' },
+ const floorData = {
+        // 階層モード（1F〜5Fすべて対応する.mindと.glbを読み込み）
+        '1f': { mind: '1f', model: 'kougyo2.glb', video: '', floorText: '1F', modelScale: '0.2 0.2 0.2', modelPos: '0 0 0' },
+        '2f': { mind: '2f', model: 'syokutyou.glb', video: '', floorText: '2F', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0' },
+        '3f': { mind: '3f', model: 'fukude3.glb', video: '', floorText: '3F', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0' },
+        '4f': { mind: '4f', model: 'zyougi.glb', video: '', floorText: '4F', modelScale: '0.2 0.2 0.2', modelPos: '0 0 0' },
+        '5f': { mind: '5f', model: 'syougyou3.glb', video: '', floorText: '5F', modelScale: '0.5 0.5 0.5', modelPos: '0 0 0' },
 
+        // 学科モード（実在する shokutyou.mind / fukude.mind 等に合わせ済み）
         'denki':     { mind: 'tokei',     model: '', video: 'denki.mp4',     floorText: '電子機械', flag: 'stamp-a-flag', videoWidth: '1.0', videoHeight: '0.56' },
         'jougi':     { mind: 'pc',        model: '', video: 'jgvideo2.mp4',  floorText: '情報技術', flag: 'stamp-b-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'hukude':    { mind: 'hukude',    model: '', video: 'hukude.mp4',    floorText: '服飾デザイン', flag: 'stamp-d-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'syokutyou': { mind: 'syokutyou', model: '', video: 'syokutyou.mp4', floorText: '食物調理', flag: 'stamp-e-flag', videoWidth: '1.0', videoHeight: '0.56' },
+        'hukude':    { mind: 'fukude',    model: '', video: 'hukude.mp4',    floorText: '服飾デザイン', flag: 'stamp-d-flag', videoWidth: '1.0', videoHeight: '0.56' },
+        'syokutyou': { mind: 'shokutyou', model: '', video: 'syokutyou.mp4', floorText: '食物調理', flag: 'stamp-e-flag', videoWidth: '1.0', videoHeight: '0.56' },
         'ryukei':    { mind: 'ryukei',    model: '', video: 'syougyou.mp4',  floorText: '流通経済', flag: 'stamp-f-flag', videoWidth: '1.0', videoHeight: '0.56' }
     };
 
