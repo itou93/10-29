@@ -125,8 +125,7 @@
         const container = document.getElementById('ar-container');
         
         // パスを相対指定（./）かつ半角スペース区切りで連結
-        const targets = `./${currentConfig.mind0} ./${currentConfig.mind1}`;
-
+       const targets = `${currentConfig.mind0} ${currentConfig.mind1}`;
         container.innerHTML = `
         <a-scene
             id="ar-scene"
