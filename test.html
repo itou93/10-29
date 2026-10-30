@@ -53,6 +53,7 @@
 
     <a href="videoMaya.html" class="btn-back">← 戻る</a>
 
+    <!-- ボタンは5つ（1F〜5F）のシンプルなまま -->
     <div class="floor-selector">
         <button id="btn-1f" class="floor-btn" onclick="switchFloor('1f')">1F</button>
         <button id="btn-2f" class="floor-btn" onclick="switchFloor('2f')">2F</button>
@@ -75,18 +76,38 @@
     </div>
 
     <script>
+    // 各階ごとに「階層用3Dモデル」と「対応する学科動画」をセットで定義
     const floorData = {
-        '1f': { mind: '1f', model: 'kougyo2.glb', video: '', floorText: '1F', modelScale: '0.2 0.2 0.2', modelPos: '0 0.45 0.1' },
-        '2f': { mind: '2f', model: 'syokutyou.glb', video: '', floorText: '2F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.7 0.15' },
-        '3f': { mind: '3f', model: 'fukude3.glb', video: '', floorText: '3F', modelScale: '0.35 0.35 0.35', modelPos: '0 0.55 0.15' },
-        '4f': { mind: '4f', model: 'zyougi.glb', video: '', floorText: '4F', modelScale: '0.08 0.08 0.08', modelPos: '0 -0.3 0' },
-        '5f': { mind: '5f', model: 'syougyou3.glb', video: '', floorText: '5F', modelScale: '0.5 0.5 0.5', modelPos: '0 0.5 0.1' },
-
-        'denki':     { mind: 'tokei',     model: '', video: 'denki.mp4',     floorText: '電子機械', flag: 'stamp-a-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'jougi':     { mind: 'pc',        model: '', video: 'jgvideo2.mp4',  floorText: '情報技術', flag: 'stamp-b-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'hukude':    { mind: 'hukude',    model: '', video: 'hukude.mp4',    floorText: '服飾デザイン', flag: 'stamp-d-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'syokutyou': { mind: 'syokutyou', model: '', video: 'syokutyou.mp4', floorText: '食物調理', flag: 'stamp-e-flag', videoWidth: '1.0', videoHeight: '0.56' },
-        'ryukei':    { mind: 'ryukei',    model: '', video: 'syougyou.mp4',  floorText: '流通経済', flag: 'stamp-f-flag', videoWidth: '1.0', videoHeight: '0.56' }
+        '1f': { 
+            minds: ['./1f.mind', './tokei.mind'], // 1Fマーカー + 電子機械(tokei)マーカー
+            model: 'kougyo2.glb', modelScale: '0.2 0.2 0.2', modelPos: '0 0 0',
+            video: 'denki.mp4', videoWidth: '1.0', videoHeight: '0.56',
+            floorText: '1F & 電子機械科'
+        },
+        '2f': { 
+            minds: ['./2f.mind', './shokutyou.mind'], 
+            model: 'syokutyou.glb', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0',
+            video: 'syokutyou.mp4', videoWidth: '1.0', videoHeight: '0.56',
+            floorText: '2F & 食物調理科'
+        },
+        '3f': { 
+            minds: ['./3f.mind', './fukude.mind'], 
+            model: 'fukude3.glb', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0',
+            video: 'hukude.mp4', videoWidth: '1.0', videoHeight: '0.56',
+            floorText: '3F & 服飾デザイン科'
+        },
+        '4f': { 
+            minds: ['./4f.mind', './pc.mind'], // 4Fマーカー + 情報技術(pc)マーカー
+            model: 'zyougi.glb', modelScale: '0.08 0.08 0.08', modelPos: '0 -0.3 0',
+            video: 'jgvideo2.mp4', videoWidth: '1.0', videoHeight: '0.56',
+            floorText: '4F & 情報技術科'
+        },
+        '5f': { 
+            minds: ['./5f.mind', './ryukei.mind'], 
+            model: 'syougyou3.glb', modelScale: '0.5 0.5 0.5', modelPos: '0 0 0',
+            video: 'syougyou.mp4', videoWidth: '1.0', videoHeight: '0.56',
+            floorText: '5F & 流通経済科'
+        }
     };
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -107,56 +128,60 @@
     }
 
     function buildARScene() {
-        const mindFile = currentConfig.mind; 
         const container = document.getElementById('ar-container');
-        const hasVideo = Boolean(currentConfig.video);
-        const hasModel = Boolean(currentConfig.model);
         
+        // 2つの.mindファイルをセミコロン(;)で連結して同時に読み込む設定
+        const mindTargetsString = currentConfig.minds.join('; ');
+
         container.innerHTML = `
         <a-scene
             id="ar-scene"
-            mindar-image="imageTargetSrc: ./${mindFile}.mind; autoStart: true; uiLoading: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001;"
+            mindar-image="imageTargetSrc: ${mindTargetsString}; autoStart: true; uiLoading: no; uiError: no;"
             color-space="sRGB"
             renderer="colorManagement: true, physicallyCorrectLights: true"
             vr-mode-ui="enabled: false"
             device-orientation-permission-ui="enabled: false">
 
-            ${hasVideo ? `
             <a-assets>
                 <video id="ar-video-element" src="${currentConfig.video}" preload="auto" loop crossorigin="anonymous" playsinline webkit-playsinline muted></video>
-            </a-assets>` : ''}
+                <a-asset-item id="ar-model-asset" src="${currentConfig.model}"></a-asset-item>
+            </a-assets>
 
             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-            <a-entity light="type: ambient; color: #ffffff; intensity: 2.5;"></a-entity>
-            <a-entity light="type: directional; color: #ffffff; intensity: 1.2;" position="1 2 1"></a-entity>
+            <a-entity light="type: ambient; color: #ffffff; intensity: 2.0;"></a-entity>
+            <a-entity light="type: directional; color: #ffffff; intensity: 1.0;" position="1 2 1"></a-entity>
 
-            <a-entity mindar-image-target="targetIndex: 0" id="target-object">
-                ${hasVideo ? `
+            <!-- Target 0: 階層マーカー (3Dモデルを表示) -->
+            <a-entity mindar-image-target="targetIndex: 0" id="target-model">
+                <a-entity
+                    gltf-model="#ar-model-asset"
+                    position="${currentConfig.modelPos}"
+                    scale="${currentConfig.modelScale}"
+                    rotation="0 0 0">
+                </a-entity>
+            </a-entity>
+
+            <!-- Target 1: 学科マーカー (動画を表示) -->
+            <a-entity mindar-image-target="targetIndex: 1" id="target-video">
                 <a-video
                     id="floor-video-entity"
                     src="#ar-video-element"
                     position="0 0 0"
                     rotation="0 0 0"
-                    width="${currentConfig.videoWidth || '1.0'}"
-                    height="${currentConfig.videoHeight || '0.56'}"
+                    width="${currentConfig.videoWidth}"
+                    height="${currentConfig.videoHeight}"
                     material="shader: flat; side: double;">
-                </a-video>` : ''}
-
-                ${hasModel ? `
-                <a-gltf-model
-                    src="${currentConfig.model}"
-                    position="${currentConfig.modelPos || '0 0 0'}"
-                    scale="${currentConfig.modelScale || '1 1 1'}"
-                    rotation="0 0 0">
-                </a-gltf-model>` : ''}
+                </a-video>
             </a-entity>
         </a-scene>
         `;
 
-        // 確実にDOMに追加された後、イベント登録を実行するようタイマーで担保
-        setTimeout(() => {
+        const sceneEl = document.getElementById('ar-scene');
+        if (sceneEl.hasLoaded) {
             setupTargetEvents();
-        }, 500);
+        } else {
+            sceneEl.addEventListener('loaded', setupTargetEvents);
+        }
     }
 
     function switchFloor(floorPrefix) {
@@ -164,42 +189,29 @@
         window.location.href = `?floor=${floorPrefix}`;
     }
 
-    let stampTimer = null;
-
     function setupTargetEvents() {
-        const targetObject = document.getElementById('target-object');
-        const stampDialog = document.getElementById('stamp-dialog');
-        const stampMsg = document.getElementById('stamp-msg');
+        const targetModel = document.getElementById('target-model');
+        const targetVideo = document.getElementById('target-video');
         const videoNativeEl = document.getElementById('ar-video-element');
 
-        if (targetObject) {
-            targetObject.addEventListener('targetFound', () => {
-                console.log("ターゲット検出成功！");
-                if (stampTimer) clearTimeout(stampTimer);
+        // 3Dモデルマーカー検知
+        if (targetModel) {
+            targetModel.addEventListener('targetFound', () => {
+                console.log("階層モデルマーカー認識成功！");
+            });
+        }
 
+        // 学科動画マーカー検知
+        if (targetVideo) {
+            targetVideo.addEventListener('targetFound', () => {
+                console.log("学科動画マーカー認識成功！");
                 if (videoNativeEl) {
                     videoNativeEl.currentTime = 0;
                     videoNativeEl.play().catch(e => console.log("再生エラー:", e));
                 }
-
-                if (currentConfig.flag) {
-                    localStorage.setItem(currentConfig.flag, '1');
-                }
-                localStorage.setItem(`stamp-${currentConfig.floorText}-done`, '1');
-
-                stampTimer = setTimeout(() => {
-                    stampMsg.innerHTML = `${currentConfig.floorText} のオブジェクトを検出して<br>ARコンテンツが解放されました！`;
-                    stampDialog.style.display = 'flex';
-                }, 10000);
             });
 
-            targetObject.addEventListener('targetLost', () => {
-                console.log("ターゲット喪失");
-                if (stampTimer) {
-                    clearTimeout(stampTimer);
-                    stampTimer = null;
-                }
-
+            targetVideo.addEventListener('targetLost', () => {
                 if (videoNativeEl) {
                     videoNativeEl.pause();
                 }
