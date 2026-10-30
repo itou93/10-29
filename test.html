@@ -75,22 +75,22 @@
     </div>
 
     <script>
-    // 階層用.mind (index 0) と 学科用.mind (index 1) の2つを定義
+    // 各階層のターゲット定義（リポジトリの正確なファイル名に対応）
     const floorData = {
         '1f': { 
             mind0: '1f.mind', mind1: 'tokei.mind',
             model: 'kougyo2.glb', modelScale: '0.2 0.2 0.2', modelPos: '0 0 0',
-            video: 'denki.mp4', videoWidth: '1.0', videoHeight: '0.56'
+            video: 'GameVideo.mp4', videoWidth: '1.0', videoHeight: '0.56'
         },
         '2f': { 
             mind0: '2f.mind', mind1: 'shokutyou.mind',
             model: 'syokutyou.glb', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0',
-            video: 'syokutyou.mp4', videoWidth: '1.0', videoHeight: '0.56'
+            video: 'GameVideo.mp4', videoWidth: '1.0', videoHeight: '0.56'
         },
         '3f': { 
-            mind0: '3f.mind', mind1: 'hukude.mind',
+            mind0: '3f.mind', mind1: 'hukude.mind', // 実ファイルの hukude.mind に合わせ修正
             model: 'fukude3.glb', modelScale: '0.35 0.35 0.35', modelPos: '0 0 0',
-            video: 'hukude.mp4', videoWidth: '1.0', videoHeight: '0.56'
+            video: 'GameVideo.mp4', videoWidth: '1.0', videoHeight: '0.56'
         },
         '4f': { 
             mind0: '4f.mind', mind1: 'pc.mind',
@@ -100,13 +100,13 @@
         '5f': { 
             mind0: '5f.mind', mind1: 'ryukei.mind',
             model: 'syougyou3.glb', modelScale: '0.5 0.5 0.5', modelPos: '0 0 0',
-            video: 'syougyou.mp4', videoWidth: '1.0', videoHeight: '0.56'
+            video: 'GameVideo.mp4', videoWidth: '1.0', videoHeight: '0.56'
         }
     };
 
     const urlParams = new URLSearchParams(window.location.search);
-    let selectedFloor = (urlParams.get('floor') || '1f').toLowerCase();
-    if (!floorData[selectedFloor]) selectedFloor = '1f';
+    let selectedFloor = (urlParams.get('floor') || '4f').toLowerCase();
+    if (!floorData[selectedFloor]) selectedFloor = '4f';
 
     let currentConfig = floorData[selectedFloor];
 
@@ -124,8 +124,8 @@
     function buildARScene() {
         const container = document.getElementById('ar-container');
         
-        // 2つの.mindファイルを半角スペース区切りで連結（MindAR標準仕様）
-        const targets = `${currentConfig.mind0} ${currentConfig.mind1}`;
+        // パスを相対指定（./）かつ半角スペース区切りで連結
+        const targets = `./${currentConfig.mind0} ./${currentConfig.mind1}`;
 
         container.innerHTML = `
         <a-scene
@@ -145,7 +145,7 @@
             <a-entity light="type: ambient; color: #ffffff; intensity: 2.0;"></a-entity>
             <a-entity light="type: directional; color: #ffffff; intensity: 1.0;" position="1 2 1"></a-entity>
 
-            <!-- ターゲット 0: 階層用ポスター（3Dモデル） -->
+            <!-- targetIndex: 0 (ポスター -> 3Dモデル) -->
             <a-entity mindar-image-target="targetIndex: 0" id="target-0">
                 <a-entity
                     gltf-model="#ar-model-asset"
@@ -155,7 +155,7 @@
                 </a-entity>
             </a-entity>
 
-            <!-- ターゲット 1: 学科用PC/機材（動画） -->
+            <!-- targetIndex: 1 (PC等 -> 動画) -->
             <a-entity mindar-image-target="targetIndex: 1" id="target-1">
                 <a-video
                     id="floor-video-entity"
@@ -190,16 +190,16 @@
 
         if (target0) {
             target0.addEventListener('targetFound', () => {
-                console.log("階層モデルマーカー検出");
+                console.log("階層モデルマーカー認識成功！");
             });
         }
 
         if (target1) {
             target1.addEventListener('targetFound', () => {
-                console.log("学科動画マーカー検出");
+                console.log("学科動画マーカー認識成功！");
                 if (videoNativeEl) {
                     videoNativeEl.currentTime = 0;
-                    videoNativeEl.play().catch(e => console.log("再生制限:", e));
+                    videoNativeEl.play().catch(e => console.log("再生エラー:", e));
                 }
             });
 
